@@ -1,6 +1,6 @@
 # Curvature and assembly of parallel meshes
 
-The Python script `filofree.py` detects for a given conical mesh with convex faces in Blender whether the faces are locally free. It is part of my Master's thesis at TU Berlin were theoretical background about the topics _Curvature of parallel meshes_, _conical meshes_, their _assembly_ and especially _local freedom_ can be found. 
+The Python script `filofree.py` detects for a given conical mesh with convex faces in Blender whether the faces are locally free. It is part of my master's thesis at TU Berlin were theoretical background about the topics _curvature of parallel meshes_, _conical meshes_, their _assembly_ and especially _local freedom_ can be found. 
 
 ## Getting started
 
@@ -36,7 +36,7 @@ Make sure the normals of the faces are oriented consistently, else select the wr
 
 Make sure the mesh is conical. In `filofree.py` the global variable `error` can be changed if precision errors might result into not detecting a (correct) conical mesh.
 
-The method `parallel_mesh(bmeh, d)` takes a `bmesh`, calculates a parallel mesh at constant face distance `d` and joins them. This can be handy to have quick visual feedback whether there might be errors at some point.
+The method `parallel_mesh(bm, d)` takes a `bmesh`, calculates a parallel mesh at constant face distance `d` and joins them. This can be handy to have quick visual feedback whether there might be errors at some point.
 
 ## License
 
