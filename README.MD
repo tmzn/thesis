@@ -28,6 +28,16 @@ In the case of success, the script selects all locally free faces and deselects 
 
 ![Example output](images/BlenderRunScript.png)
 
+## Obstacles
+
+Make sure the normals of the faces are oriented consistently, else select the wrongly oriented and then _flip normals_.
+
+- [How to display the normal of a face](https://blender.stackexchange.com/questions/33337/how-to-display-the-normal-values-of-a-face)
+
+Make sure the mesh is conical. In `filofree.py` the global variable `error` can be changed if precision errors might result into not detecting a (correct) conical mesh.
+
+The method `parallel_mesh(bmeh, d)` takes a `bmesh`, calculates a parallel mesh at constant face distance `d` and joins them. This can be handy to have quick visual feedback whether there might be errors at some point.
+
 ## License
 
 `filofree.py` is licensed under the MIT License, see [LICENSE](LICENSE).
