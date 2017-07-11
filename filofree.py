@@ -47,7 +47,7 @@ def has_convex_faces(bm):
 def is_convex(vertices):
     l = len(vertices)
     n = (vertices[1] - vertices[0]).cross(vertices[2] - vertices[1]).normalized()
-    for i in range(0, l):
+    for i in range(1, l):
         m = (vertices[(i+1)%l] - vertices[i]).cross(vertices[(i+2)%l] - vertices[(i+1)%l]).normalized()
         if (m - n).length >= error:
             return False
@@ -101,7 +101,12 @@ def get_next_edge(vertex, visited):
 
 
 def get_ordered_adjacent_vertices(vertex):
-    edge = vertex.link_edges[0]
+    min = math.inf
+    for e in vertex.link_edges:
+        l = len(e.link_faces)
+        if (l < min):
+            edge = e
+            min = l
     visited = [edge]
     while edge is not None:
         edge = get_next_edge(vertex, visited)
@@ -141,7 +146,8 @@ def is_conical_mesh(bm):
                 w3 = angle(vertex.co, others[2].co, others[3].co)
                 w4 = angle(vertex.co, others[3].co, others[0].co)
                 if not is_angle_criterion_true(w1, w2, w3, w4):
-                    print(str(vertex.co) + "," + str(w1) + "," + str(w2) + "," + str(w3) + "," + str(w4))
+                    print("Angle criterion failed at vertex: " 
+                        + str(vertex.co) + "," + str(w1) + "," + str(w2) + "," + str(w3) + "," + str(w4))
                     return False
     return True
 
@@ -181,7 +187,8 @@ def bisector_planes(vertex):
         v1 = vertices[i]
         v2 = vertices[(i + 1) % l]
         face = face_containing(vertex.link_faces, vertex, v1, v2)
-        faces.append(face)
+        if not face is None:
+            faces.append(face)
     l = len(faces)
     n = []
     for i in range(0,l):
@@ -220,22 +227,23 @@ def calculate_gauss_image(bm):
 
 #calculates the Gauss-image for the given vertex
 def calculate_normal(vertex):
+    #vertex has link_faces <= 2 and an adjacent inner vertex
     if len(vertex.link_faces) <= 2:
         for e in vertex.link_edges:
             v = e.other_vert(vertex)
             if not is_boundary_vertex(v):
-                return calculate_normal(v)
+                return normal(v)
         for f in vertex.link_faces:
             for v in f.verts:
                 if not is_boundary_vertex(v):
-                    return calculate_normal(v)
+                    return normal(v)
 
         n = Vector((0,0,0))
         for f in vertex.link_faces:
             n += f.normal
         return n
 
-    #TODO it might happen that len(vertex.link_faces) <= 2 but no adjacent inner vertex exists
+    #vertex has link_faces <= 2 but no adjacent inner vertex
     if len(vertex.link_faces) == 1:
         return vertex.link_faces[0].normal
 
@@ -251,6 +259,7 @@ def calculate_normal(vertex):
         n.normalize()
         return n
 
+    #vertex has link_faces >= 3
     normals = bisector_planes(vertex)
     n1 = normals[0]
     for n in normals:
@@ -304,8 +313,7 @@ def calculate_parallel_mesh(bm, d):
 #face to the left of directed edge (u,v)
 def side_face_normal(u, v, n_v):
     n = (v - u).cross(n_v)
-    n.normalize()
-    return n
+    return n.normalized()
 
 
 # #========================================================# #
@@ -332,12 +340,10 @@ def is_locally_free(face):
     n = np.array(n)
     b = [0] * len(n)
     x = linprog(c, A_ub = n, b_ub = b)
-    result = x.status
-    if result == 3:
+    if x.status == 3: #unbounded
         return True
     x = linprog(-c, A_ub = n, b_ub = b)
-    result = x.status
-    if result == 3:
+    if x.status == 3: #unbounded
         return True
     return False
 
@@ -374,6 +380,44 @@ def gauss_curvature_parallel(face):
 # |                                                        | #
 # #========================================================# #
 
+def reason(r):
+    return {
+        "b": "since it is a boundary face",
+        "k": "detected by Gaussian curvature",
+        "l": "detected by Linear Program",
+    }[r]
+
+def print_face(face, k, free, r):
+    l = len(str(error))-2
+    b = "" if free else "not "
+    text = reason(r)
+    gauss = ("{0:." + str(l) + "f}").format(k)
+    print("face " + str(face.index) + " with K = " + gauss + " is " + b + "locally free, " + text)
+
+def select_locally_free_faces(bm):
+    for face in bm.faces:
+        s_f = [normal(v) for v in face.verts]
+        k = gauss_curvature_parallel(face)
+        if is_boundary_face(face):
+            face.select = True
+            print_face(face, k, True, "b")
+        else:
+            if is_convex(s_f) and not is_degenerate(s_f):
+                if k > 0:
+                    face.select = True
+                    print_face(face, k, True, "k")
+                else:
+                    face.select = False
+                    print_face(face, k, False, "k")
+            else:
+                if is_locally_free(face):
+                    face.select = True
+                    print_face(face, k, True, "l")
+                else:
+                    face.select = False
+                    print_face(face, k, False, "l")
+
+
 # precision that is considered to be zero
 error = 0.005
 
@@ -388,30 +432,11 @@ obj.matrix_world = Matrix()
 bm.normal_update()
 if is_conical_mesh(bm):
     if not has_convex_faces(bm):
-        print("Given mesh has faces that are not convex.")
+        print("Given mesh has faces that are not convex or not planar.")
     else:
         s = calculate_gauss_image(bm)
-        for face in bm.faces:
-            s_f = [normal(v) for v in face.verts]
-            k = gauss_curvature_parallel(face)
-            if is_boundary_face(face):
-                face.select = True
-                print("face " + str(face.index) + " with K = " + str(k) + " is locally free, since it is a boundary face")
-            else:
-                if is_convex(s_f) and not is_degenerate(s_f):
-                    if k > 0:
-                        face.select = True
-                        print("face " + str(face.index) + " with K = " + str(k) + " is locally free, detected by Gaussian curvature")
-                    else:
-                        face.select = False
-                        print("face " + str(face.index) + " with K = " + str(k) + " is not locally free, detected by Gaussian curvature")
-                else:
-                    if is_locally_free(face):
-                        face.select = True
-                        print("face " + str(face.index) + " with K = " + str(k) + " is locally free, detected by Linear Program")
-                    else:
-                        face.select = False
-                        print("face " + str(face.index) + " with K = " + str(k) + " is not locally free, detected by Linear Program")
+        select_locally_free_faces(bm)
+        #parallel_mesh(bm, 0.5)
     bmesh.update_edit_mesh(mesh)
 else:
     print("Given mesh is not conical.")

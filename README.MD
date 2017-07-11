@@ -38,6 +38,8 @@ Make sure the mesh is conical. In `filofree.py` the global variable `error` can 
 
 The method `parallel_mesh(bm, d)` takes a `bmesh`, calculates a parallel mesh at constant face distance `d` and joins them. This can be handy to have quick visual feedback whether there might be errors at some point.
 
+Meshes where a vertex is adjacent to two faces that share no edge cannot be handled.
+
 ## License
 
 `filofree.py` is licensed under the MIT License, see [LICENSE](LICENSE).
