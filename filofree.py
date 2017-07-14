@@ -232,11 +232,11 @@ def calculate_normal(vertex):
         for e in vertex.link_edges:
             v = e.other_vert(vertex)
             if not is_boundary_vertex(v):
-                return normal(v)
+                return calculate_normal(v)
         for f in vertex.link_faces:
             for v in f.verts:
                 if not is_boundary_vertex(v):
-                    return normal(v)
+                    return calculate_normal(v)
 
         n = Vector((0,0,0))
         for f in vertex.link_faces:
